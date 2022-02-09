@@ -1,0 +1,70 @@
+plugins {
+    id 'java'
+}
+
+sourceCompatibility = JavaVersion.VERSION_11
+
+repositories {
+    jcenter()
+}
+
+dependencies {
+    compile 'org.xerial:sqlite-jdbc:3.32.3'
+
+    //spark web framework
+    compile 'com.sparkjava:spark-core:2.9.2'
+    compile 'com.sparkjava:spark-template-velocity:2.7.1'
+
+    //javalin web framework (alternative to spark)
+    compile 'io.javalin:javalin:3.9.1'
+    compile 'org.apache.velocity:velocity-engine-core:2.2'
+
+    compile 'com.google.code.gson:gson:2.8.6' //for json support, preferable instead of jackson
+    //compile 'org.slf4j:slf4j-simple:1.7.30' //basic logging
+    compile 'ch.qos.logback:logback-classic:1.2.3' //more complete logging
+
+    testCompile 'junit:junit:4.12'
+}
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}
+
+
+//--- CUSTOM GRADING SUPPORT ---//
+import org.gradle.api.tasks.testing.logging.TestLogEvent
+
+tasks.withType(Test) { testTask ->
+
+    testLogging {
+        events = [TestLogEvent.FAILED, TestLogEvent.PASSED, TestLogEvent.SKIPPED /*,TestLogEvent.STANDARD_OUT*/]
+    }
+
+    def (finalGrade, totalPoints) = [0, 0]
+
+    // go through all test and retrieve the fake tasks (with grade info), then extract the results
+    afterTest { descriptor, result ->
+        if (result.resultType == TestResult.ResultType.SUCCESS) {
+            def gradesMatcher = descriptor.name =~ ~/(\d+)\/(\d+)/
+            if (gradesMatcher.find()) {
+                def (grade, max) = [gradesMatcher.group(1), gradesMatcher.group(2)]
+                finalGrade += grade.isInteger() ? grade as Integer : 0
+                totalPoints += max.isInteger() ? max as Integer : 0
+            }
+        }
+    }
+
+    // present a nice interface with the results
+    afterSuite { descriptor, result ->
+        if (totalPoints > 0 && !descriptor.parent) { // will match the outermost suite
+            def output = "|   FINAL GRADE: $finalGrade/$totalPoints | Result: ${result.resultType} (" +
+                    "${result.successfulTestCount} tests passed" +
+                    (result.failedTestCount > 0 ? ", ${result.failedTestCount} failed" : "") +
+                    (result.skippedTestCount > 0 ? ", ${result.skippedTestCount} skipped" : "") + ")   |"
+            def header = '-' * output.size()
+            println("\n$header\n$output\n$header")
+        }
+    }
+}
+// force re-run of the test task each time
+test.dependsOn(cleanTest)

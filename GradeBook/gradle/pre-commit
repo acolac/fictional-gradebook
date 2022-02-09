@@ -1,0 +1,15 @@
+#!/bin/sh
+
+# Retrieve author information as Git sees it while committing
+AUTHOR_INFO=$(git var GIT_AUTHOR_IDENT) || exit 1
+NAME=$(printf '%s\n\n' "${AUTHOR_INFO}" | sed -n 's/^\(.*\) <.*$/\1/p')
+#EMAIL=$(printf '%s\n\n' "${AUTHOR_INFO}" | sed -n 's/^.* <\(.*\)> .*$/\1/p')
+
+# If we're trying to commit to repo with not allowed email
+if [ "$NAME" != "Cristi Macoviciuc" ] && [ "$NAME" != "Lucian Moisa" ] && [ "$NAME" != "Catalin Chiculita" ]; then
+  echo "You are NOT ALLOWED to commit in this repo!"
+  echo "Please rollback your changes here, and commit them in repos you are allowed to."
+  echo "(current commit name: ${NAME})"
+  #printf "EMAIL: {EMAIL}"
+  exit 1
+fi
